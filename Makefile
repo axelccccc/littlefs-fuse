@@ -28,7 +28,13 @@ override CFLAGS += -DLFS_MULTIVERSION
 # enable migrate support in littlefs
 override CFLAGS += -DLFS_MIGRATE
 
+ifeq ($(OS), Darwin)
+override CFLAGS += -I /usr/local/include
+override LFLAGS += -L /usr/local/lib
 override LFLAGS += -lfuse
+else
+override LFLAGS += -lfuse
+endif
 
 ifeq ($(OS), FreeBSD)
 override CFLAGS += -I /usr/local/include
