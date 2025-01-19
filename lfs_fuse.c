@@ -1,17 +1,13 @@
 /*
  * FUSE wrapper for the littlefs
  *
+ * Copyright (c) 2024, Axel Courtes
  * Copyright (c) 2022, the littlefs authors.
  * Copyright (c) 2017, Arm Limited. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-#define FUSE_USE_VERSION 26
-
-#ifdef linux
-// needed for a few things fuse depends on
-#define _XOPEN_SOURCE 700
-#endif
+#include "lfs_fuse.h"
 
 #include <fuse/fuse.h>
 #include "lfs.h"
@@ -25,18 +21,48 @@
 #include <string.h>
 #include <errno.h>
 
+/*******************************************************/
+/* DEFINITIONS                                         */
+/*******************************************************/
 
-// littefs-fuse version
-//
-// Note this is different from the littlefs core version, and littlefs
-// on-disk version
-//
-// Major (top-nibble), incremented on backwards incompatible changes
-// Minor (bottom-nibble), incremented on feature additions
-#define LFS_FUSE_VERSION 0x00020007
-#define LFS_FUSE_VERSION_MAJOR (0xffff & (LFS_FUSE_VERSION >> 16))
-#define LFS_FUSE_VERSION_MINOR (0xffff & (LFS_FUSE_VERSION >>  0))
+/*******************************************************/
+/* VARIABLES                                           */
+/*******************************************************/
 
+static struct fuse_operations lfs_fuse_ops = {
+    .init       = lfs_fuse_init,
+    .destroy    = lfs_fuse_destroy,
+    .statfs     = lfs_fuse_statfs,
+
+    .getattr    = lfs_fuse_getattr,
+    .access     = lfs_fuse_access,
+
+    .mkdir      = lfs_fuse_mkdir,
+    .rmdir      = lfs_fuse_unlink,
+    .opendir    = lfs_fuse_opendir,
+    .releasedir = lfs_fuse_releasedir,
+    .readdir    = lfs_fuse_readdir,
+
+    .rename     = lfs_fuse_rename,
+    .unlink     = lfs_fuse_unlink,
+
+    .open       = lfs_fuse_open,
+    .create     = lfs_fuse_create,
+    .truncate   = lfs_fuse_truncate,
+    .release    = lfs_fuse_release,
+    .fgetattr   = lfs_fuse_fgetattr,
+    .read       = lfs_fuse_read,
+    .write      = lfs_fuse_write,
+    .fsync      = lfs_fuse_fsync,
+    .flush      = lfs_fuse_flush,
+
+    .link       = lfs_fuse_link,
+    .symlink    = lfs_fuse_link,
+    .mknod      = lfs_fuse_mknod,
+    .chmod      = lfs_fuse_chmod,
+    .chown      = lfs_fuse_chown,
+    .utimens    = lfs_fuse_utimens,
+};
 
 // config and other state
 static struct lfs_config config = {0};
@@ -46,6 +72,9 @@ static bool format = false;
 static bool migrate = false;
 static lfs_t lfs;
 
+/*******************************************************/
+/* CODE                                                */
+/*******************************************************/
 
 // actual fuse functions
 void lfs_fuse_defaults(struct lfs_config *config) {
@@ -425,41 +454,6 @@ int lfs_fuse_utimens(const char *path, const struct timespec ts[2]) {
     // not supported, always succeed
     return 0;
 }
-
-static struct fuse_operations lfs_fuse_ops = {
-    .init       = lfs_fuse_init,
-    .destroy    = lfs_fuse_destroy,
-    .statfs     = lfs_fuse_statfs,
-
-    .getattr    = lfs_fuse_getattr,
-    .access     = lfs_fuse_access,
-
-    .mkdir      = lfs_fuse_mkdir,
-    .rmdir      = lfs_fuse_unlink,
-    .opendir    = lfs_fuse_opendir,
-    .releasedir = lfs_fuse_releasedir,
-    .readdir    = lfs_fuse_readdir,
-
-    .rename     = lfs_fuse_rename,
-    .unlink     = lfs_fuse_unlink,
-
-    .open       = lfs_fuse_open,
-    .create     = lfs_fuse_create,
-    .truncate   = lfs_fuse_truncate,
-    .release    = lfs_fuse_release,
-    .fgetattr   = lfs_fuse_fgetattr,
-    .read       = lfs_fuse_read,
-    .write      = lfs_fuse_write,
-    .fsync      = lfs_fuse_fsync,
-    .flush      = lfs_fuse_flush,
-
-    .link       = lfs_fuse_link,
-    .symlink    = lfs_fuse_link,
-    .mknod      = lfs_fuse_mknod,
-    .chmod      = lfs_fuse_chmod,
-    .chown      = lfs_fuse_chown,
-    .utimens    = lfs_fuse_utimens,
-};
 
 
 // binding into fuse and general ui
